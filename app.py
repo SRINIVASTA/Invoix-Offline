@@ -9,6 +9,7 @@ st.title("🖨️ Two-Way Master Invoice Generator")
 
 # --- SIDEBAR CONTROL PANEL LAYOUT ---
 st.sidebar.header("⚙️ Invoix Control Panel")
+st.sidebar.caption("👉 *Complete Steps 1 & 2 below to see your live document preview on the right.*")
 
 st.sidebar.markdown("### 🛠️ Step 1: Customize Style & Currency")
 theme_choice = st.sidebar.selectbox("🎨 Choose Invoice Theme Color:", ["Corporate Navy", "Emerald Modern", "Charcoal Minimalist"])
@@ -185,7 +186,7 @@ def generate_true_pdf(vendor, addr, phone, web, client, c_addr, inv_num, date, t
         pdf.cell(35, 9, txt=f"{pdf_currency} {row['Unit Price']:,.2f}", border="B", ln=0, align="R")
         pdf.cell(35, 9, txt=f"{pdf_currency} {row['Total']:,.2f} ", border="B", ln=1, align="R")
         
-    # Financial calculations
+    # Financial calculations block
     tax_amount = subtotal * (tax / 100)
     grand_total = subtotal + tax_amount
     
@@ -214,8 +215,11 @@ if final_items and any(item['Description'] for item in final_items):
         tax_rate, final_items, PRIMARY_RGB, CURRENCY_SYM
     )
     
+    # Updated Step 3 layout block with explicitly mapped user text layout
     st.sidebar.markdown("---")
-    st.sidebar.markdown("### 🖨️ Step 3: Download Document")
+    st.sidebar.markdown("### 🖨 ... Step 3: Download Invoice")
+    st.sidebar.caption("💡 *you can download pdf invoice below*") # Added precise indication line here
+    
     st.sidebar.download_button(
         label="📥 Click to Download True PDF",
         data=bytes(pdf_bytes),
@@ -302,4 +306,4 @@ if final_items and any(item['Description'] for item in final_items):
     """
     st.components.v1.html(html_invoice, height=650, scrolling=True)
 else:
-    st.info("💡 **Choose your flow in the sidebar control rail!** Upload your master `items.csv` file or select 'Manual Form Entry' to instantly populate your billing data.")
+    st.info("💡 **Welcome to the Invoix Studio!** Please choose your flow inside the left sidebar control panel. Upload your master template file or enter parameters manually to build your document canvas view here.")
