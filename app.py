@@ -4,10 +4,10 @@ from datetime import datetime
 from fpdf import FPDF
 import base64
 
-st.set_page_config(page_title="Master CSV Invoice Processor", layout="wide")
-st.title("🖨️ Master CSV to PDF Invoice Generator")
+st.set_page_config(page_title="Master Invoice Processor", layout="wide")
+st.title("🖨️ Two-Way Master Invoice Generator")
 
-# --- STEP 1 & 2: SIDEBAR CONTROL PANEL LAYOUT ---
+# --- SIDEBAR CONTROL PANEL LAYOUT ---
 st.sidebar.header("⚙️ Invoix Control Panel")
 
 st.sidebar.markdown("### 🛠️ Step 1: Customize Style & Currency")
@@ -29,74 +29,104 @@ currency_choice = st.sidebar.selectbox("💰 Select Currency Symbol:", ["₹", "
 CURRENCY_SYM = currency_choice
 
 st.sidebar.markdown("---")
-st.sidebar.markdown("### 📥 Step 2: Upload Source Data")
-uploaded_file = st.sidebar.file_uploader("Upload your comprehensive items.csv", type=["csv"])
+st.sidebar.markdown("### 🔄 Step 2: Choose Entry Method")
+entry_method = st.sidebar.radio("Select Processing Mode:", ["Upload Master CSV File", "Manual Form Entry"], horizontal=False)
 
-# Default fallback values if no file is uploaded yet
-vendor_name, vendor_addr, vendor_phone, vendor_web = "My Business Ltd", "Address", "N/A", "N/A"
+# Initialize global fallback default values
+vendor_name, vendor_addr, vendor_phone, vendor_web = "My Business Ltd", "Address Line", "N/A", "N/A"
 client_name, client_addr = "Client Name", "Client Address"
 inv_number, tax_rate = "INV-000", 0.0
 inv_date = datetime.today().strftime('%Y-%m-%d') 
 final_items = []
 
-if uploaded_file is not None:
-    try:
-        raw_bytes = uploaded_file.read()
-        raw_text = raw_bytes.decode("utf-8").splitlines()
-        
-        metadata_lines, items_lines = [], []
-        current_section = None
-        
-        for line in raw_text:
-            if "[METADATA]" in line:
-                current_section = "metadata"
-                continue
-            elif "[ITEMS]" in line:
-                current_section = "items"
-                continue
+if entry_method == "Upload Master CSV File":
+    uploaded_file = st.sidebar.file_uploader("Upload your comprehensive items.csv", type=["csv"])
+    if uploaded_file is not None:
+        try:
+            raw_bytes = uploaded_file.read()
+            raw_text = raw_bytes.decode("utf-8").splitlines()
+            metadata_lines, items_lines = [], []
+            current_section = None
             
-            if current_section == "metadata" and line.strip():
-                metadata_lines.append(line)
-            elif current_section == "items" and line.strip():
-                items_lines.append(line)
+            for line in raw_text:
+                if "[METADATA]" in line:
+                    current_section = "metadata"
+                    continue
+                elif "[ITEMS]" in line:
+                    current_section = "items"
+                    continue
                 
-        # Parse Metadata Section
-        from io import StringIO
-        if metadata_lines:
-            df_meta = pd.read_csv(StringIO("\n".join(metadata_lines)))
-            meta_dict = dict(zip(df_meta.iloc[:, 0].str.strip(), df_meta.iloc[:, 1].str.strip()))
-            
-            vendor_name = meta_dict.get("Company Name", vendor_name)
-            vendor_addr = meta_dict.get("Company Address", vendor_addr)
-            vendor_phone = meta_dict.get("Mobile No", vendor_phone)
-            vendor_web = meta_dict.get("Website", vendor_web)
-            client_name = meta_dict.get("Client Name", client_name)
-            client_addr = meta_dict.get("Client Address", client_addr)
-            inv_number = meta_dict.get("Invoice Number", inv_number)
-            tax_rate = float(meta_dict.get("Tax Rate (%)", tax_rate))
-            
-            if "Invoice Date" in meta_dict and meta_dict["Invoice Date"].strip():
-                inv_date = meta_dict["Invoice Date"].strip()
+                if current_section == "metadata" and line.strip():
+                    metadata_lines.append(line)
+                elif current_section == "items" and line.strip():
+                    items_lines.append(line)
+                    
+            from io import StringIO
+            if metadata_lines:
+                df_meta = pd.read_csv(StringIO("\n".join(metadata_lines)))
+                meta_dict = dict(zip(df_meta.iloc[:, 0].str.strip(), df_meta.iloc[:, 1].str.strip()))
+                vendor_name = meta_dict.get("Company Name", vendor_name)
+                vendor_addr = meta_dict.get("Company Address", vendor_addr)
+                vendor_phone = meta_dict.get("Mobile No", vendor_phone)
+                vendor_web = meta_dict.get("Website", vendor_web)
+                client_name = meta_dict.get("Client Name", client_name)
+                client_addr = meta_dict.get("Client Address", client_addr)
+                inv_number = meta_dict.get("Invoice Number", inv_number)
+                tax_rate = float(meta_dict.get("Tax Rate (%)", tax_rate))
+                if "Invoice Date" in meta_dict and meta_dict["Invoice Date"].strip():
+                    inv_date = meta_dict["Invoice Date"].strip()
 
-        # Parse Line Items Section
-        if items_lines:
-            df_items = pd.read_csv(StringIO("\n".join(items_lines)))
-            df_items.columns = [c.strip().title() for c in df_items.columns]
-            df_items["Quantity"] = pd.to_numeric(df_items["Quantity"]).fillna(1).astype(int)
-            df_items["Unit Price"] = pd.to_numeric(df_items["Unit Price"]).fillna(0.0).astype(float)
-            df_items["Total"] = df_items["Quantity"] * df_items["Unit Price"]
-            final_items = df_items.to_dict(orient="records")
+            if items_lines:
+                df_items = pd.read_csv(StringIO("\n".join(items_lines)))
+                df_items.columns = [c.strip().title() for c in df_items.columns]
+                df_items["Quantity"] = pd.to_numeric(df_items["Quantity"]).fillna(1).astype(int)
+                df_items["Unit Price"] = pd.to_numeric(df_items["Unit Price"]).fillna(0.0).astype(float)
+                df_items["Total"] = df_items["Quantity"] * df_items["Unit Price"]
+                final_items = df_items.to_dict(orient="records")
+                st.sidebar.success(f"Parsed {len(final_items)} rows from CSV!")
+        except Exception as e:
+            st.sidebar.error(f"CSV Parse Error: {e}")
+
+else:
+    # --- MANUAL FORM ENTRY MODE ON SIDEBAR ---
+    st.sidebar.markdown("#### 🏢 Vendor Details")
+    vendor_name = st.sidebar.text_input("Company Name", "My Business Ltd")
+    vendor_addr = st.sidebar.text_input("Company Address", "123 Business Rd, NY")
+    vendor_phone = st.sidebar.text_input("Mobile No", "+1 (555) 019-2834")
+    vendor_web = st.sidebar.text_input("Website", "://mybusiness.com")
+    
+    st.sidebar.markdown("#### 👤 Client Details")
+    client_name = st.sidebar.text_input("Client Name", "John Doe")
+    client_addr = st.sidebar.text_input("Client Address", "456 Customer Ave, CA")
+    
+    st.sidebar.markdown("#### 🔢 Meta Info")
+    inv_number = st.sidebar.text_input("Invoice Number", "INV-2026-001")
+    inv_date = st.sidebar.text_input("Invoice Date (YYYY-MM-DD)", datetime.today().strftime('%Y-%m-%d'))
+    tax_rate = st.sidebar.number_input("Tax Rate (%)", min_value=0.0, value=5.0, step=0.5)
+    
+    st.sidebar.markdown("#### 🛒 Item Lines Builder")
+    if "manual_rows" not in st.session_state:
+        st.session_state.manual_rows = [{"Description": "Service Fee", "Quantity": 1, "Unit Price": 100.0}]
+        
+    col_b1, col_b2 = st.sidebar.columns(2)
+    if col_b1.button("➕ Add Row"):
+        st.session_state.manual_rows.append({"Description": "", "Quantity": 1, "Unit Price": 0.0})
+    if col_b2.button("❌ Remove"):
+        if len(st.session_state.manual_rows) > 1:
+            st.session_state.manual_rows.pop()
             
-            st.sidebar.success(f"Loaded {len(final_items)} item rows successfully!")
-    except Exception as e:
-        st.sidebar.error(f"Error reading layout: {e}")
+    for i, item in enumerate(st.session_state.manual_rows):
+        st.sidebar.markdown(f"**Item Row #{i+1}**")
+        desc = st.sidebar.text_input(f"Description #{i+1}", item["Description"], key=f"d_f_{i}")
+        qty = st.sidebar.number_input(f"Quantity #{i+1}", min_value=1, value=int(item["Quantity"]), key=f"q_f_{i}")
+        price = st.sidebar.number_input(f"Unit Price #{i+1}", min_value=0.0, value=float(item["Unit Price"]), key=f"p_f_{i}")
+        final_items.append({"Description": desc, "Quantity": qty, "Unit Price": price, "Total": qty * price})
 # Function to generate a real PDF binary in-memory using FPDF2
 def generate_true_pdf(vendor, addr, phone, web, client, c_addr, inv_num, date, tax, items, rgb_color, currency):
     pdf = FPDF(orientation="P", unit="mm", format="A4")
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
     
-    # Safely switch currency symbol representations to prevent FPDF unicode breakages
     pdf_currency = "Rs." if currency == "₹" else currency
     
     # Header styling
@@ -155,7 +185,7 @@ def generate_true_pdf(vendor, addr, phone, web, client, c_addr, inv_num, date, t
         pdf.cell(35, 9, txt=f"{pdf_currency} {row['Unit Price']:,.2f}", border="B", ln=0, align="R")
         pdf.cell(35, 9, txt=f"{pdf_currency} {row['Total']:,.2f} ", border="B", ln=1, align="R")
         
-    # Financial Calculations block
+    # Financial calculations
     tax_amount = subtotal * (tax / 100)
     grand_total = subtotal + tax_amount
     
@@ -176,16 +206,14 @@ def generate_true_pdf(vendor, addr, phone, web, client, c_addr, inv_num, date, t
     
     return pdf.output()
 
-# --- MAIN PAGE DISPLAY PIPELINE ---
-if final_items:
-    # Compile PDF byte matrix behind the scenes
+# --- MAIN ENGINE RENDERING PIPELINE ---
+if final_items and any(item['Description'] for item in final_items):
     pdf_bytes = generate_true_pdf(
         vendor_name, vendor_addr, vendor_phone, vendor_web,
         client_name, client_addr, inv_number, inv_date, 
         tax_rate, final_items, PRIMARY_RGB, CURRENCY_SYM
     )
     
-    # Placing Step 3 inside the Sidebar menu as requested!
     st.sidebar.markdown("---")
     st.sidebar.markdown("### 🖨️ Step 3: Download Document")
     st.sidebar.download_button(
@@ -198,7 +226,6 @@ if final_items:
     
     st.markdown("### 👁️ Live Invoice Document Preview")
     
-    # Build beautiful presentation HTML mock layout
     table_rows_html = ""
     subtotal = 0.0
     for item in final_items:
@@ -273,7 +300,6 @@ if final_items:
         </table>
     </div>
     """
-    
     st.components.v1.html(html_invoice, height=650, scrolling=True)
 else:
-    st.info("💡 **Welcome!** Please look over at the left panel sidebar. Upload your template `items.csv` file there to render your real-time visual invoice dashboard layout here.")
+    st.info("💡 **Choose your flow in the sidebar control rail!** Upload your master `items.csv` file or select 'Manual Form Entry' to instantly populate your billing data.")
