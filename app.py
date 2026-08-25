@@ -28,7 +28,7 @@ with col_opt1:
     }[theme_choice]
 
 with col_opt2:
-    currency_choice = st.selectbox("💰 Select Currency Symbol:", ["$", "Rs.", "€", "£", "¥"])
+    currency_choice = st.selectbox("💰 Select Currency Symbol:", ["$", "₹", "€", "£", "¥"])
     CURRENCY_SYM = currency_choice
 
 # --- FILE UPLOADER ---
