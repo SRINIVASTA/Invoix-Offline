@@ -1,0 +1,17 @@
+[METADATA]
+Key,Value
+Company Name,WebTech Solutions Ltd
+Company Address,"123 Innovation Way, Tech District, NY 10001"
+Mobile No,+1 (555) 019-2834
+Website,://webtechsolutions.com
+Client Name,John Doe Enterprises
+Client Address,"456 Commerce Avenue, Suite B, CA 94016"
+Invoice Number,INV-2026-889
+Invoice Date,2026-08-25
+Tax Rate (%),18.0
+
+[ITEMS]
+Description,Quantity,Unit Price
+Web Design Services,1,1200.00
+Cloud Server Hosting,12,15.50
+SSL Security Certificate,2,49.99
