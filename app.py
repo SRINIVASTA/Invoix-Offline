@@ -27,7 +27,6 @@ with col_opt1:
     }[theme_choice]
 
 with col_opt2:
-    # Updated 'Rs.' to '₹' for clean processing
     currency_choice = st.selectbox("💰 Select Currency Symbol:", ["₹", "$", "€", "£", "¥"])
     CURRENCY_SYM = currency_choice
 
@@ -100,14 +99,11 @@ def generate_true_pdf(vendor, addr, phone, web, client, c_addr, inv_num, date, t
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
     
-    # Enable standard core font encoding for standard math symbols
-    pdf.configure_core_fonts_encoding("windows-1252")
-    
-    # Fallback to standard text string if symbol is non-standard font asset
+    # Safely switch currency symbol representations to prevent FPDF unicode breakages
     pdf_currency = "Rs." if currency == "₹" else currency
     
     # Header styling
-    pdf.set_text_color(rgb_color, rgb_color, rgb_color)
+    pdf.set_text_color(rgb_color[0], rgb_color[1], rgb_color[2])
     pdf.set_font("Helvetica", style="B", size=24)
     pdf.cell(100, 10, txt=vendor, ln=0, align="L")
     
@@ -142,7 +138,7 @@ def generate_true_pdf(vendor, addr, phone, web, client, c_addr, inv_num, date, t
     pdf.ln(8)
     
     # Table Header
-    pdf.set_fill_color(rgb_color, rgb_color, rgb_color)
+    pdf.set_fill_color(rgb_color[0], rgb_color[1], rgb_color[2])
     pdf.set_text_color(255, 255, 255)
     pdf.set_font("Helvetica", style="B", size=10)
     pdf.cell(100, 10, txt=" Line Item Description", border=0, ln=0, fill=True)
@@ -176,7 +172,7 @@ def generate_true_pdf(vendor, addr, phone, web, client, c_addr, inv_num, date, t
     pdf.cell(35, 6, txt=f"{pdf_currency} {tax_amount:,.2f} ", ln=1, align="R")
     
     pdf.set_font("Helvetica", style="B", size=12)
-    pdf.set_text_color(rgb_color, rgb_color, rgb_color)
+    pdf.set_text_color(rgb_color[0], rgb_color[1], rgb_color[2])
     pdf.cell(120, 10, txt="", ln=0)
     pdf.cell(35, 10, txt="Total Due:", border="T", ln=0)
     pdf.cell(35, 10, txt=f"{pdf_currency} {grand_total:,.2f} ", border="T", ln=1, align="R")
@@ -188,7 +184,7 @@ if final_items:
     st.markdown("---")
     st.markdown("### 🖨️ Step 3: Live HTML Preview & True PDF Download")
     
-    # 1. Compile PDF behind the scenes
+    # 1. Compile PDF behind the scenes safely
     pdf_bytes = generate_true_pdf(
         vendor_name, vendor_addr, vendor_phone, vendor_web,
         client_name, client_addr, inv_number, inv_date, 
