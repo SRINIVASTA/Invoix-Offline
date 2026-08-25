@@ -9,7 +9,7 @@ st.title("🖨️ Two-Way Master Invoice Generator")
 
 # --- SIDEBAR CONTROL PANEL LAYOUT ---
 st.sidebar.header("⚙️ Invoix Control Panel")
-st.sidebar.caption("👉 *Complete Steps 1 & 2 below to see your live document preview on the right.*")
+st.sidebar.caption("👉 *Complete Steps 1 & 2 below to see your live document preview on the right & in Step 3 💡 you can download pdf invoice below.*")
 
 st.sidebar.markdown("### 🛠️ Step 1: Customize Style & Currency")
 theme_choice = st.sidebar.selectbox("🎨 Choose Invoice Theme Color:", ["Corporate Navy", "Emerald Modern", "Charcoal Minimalist"])
@@ -217,8 +217,7 @@ if final_items and any(item['Description'] for item in final_items):
     
     # Updated Step 3 layout block with explicitly mapped user text layout
     st.sidebar.markdown("---")
-    st.sidebar.markdown("### 🖨 ... Step 3: Download Invoice")
-    st.sidebar.caption("💡 *you can download pdf invoice below*") # Added precise indication line here
+    st.sidebar.markdown("### 🖨 Step 3: Download Invoice")
     
     st.sidebar.download_button(
         label="📥 Click to Download True PDF",
