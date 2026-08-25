@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from fpdf import FPDF
-import base64
 
 st.set_page_config(page_title="Master CSV Invoice Processor", layout="wide")
 st.title("🖨️ Master CSV to PDF Invoice Generator")
@@ -19,7 +18,6 @@ with col_opt1:
         "Charcoal Minimalist": (55, 65, 81)
     }
     PRIMARY_RGB = theme_colors[theme_choice]
-    # Hex version for HTML embedding previews
     PRIMARY_HEX = {
         "Corporate Navy": "#1E3A8A",
         "Emerald Modern": "#065F46",
@@ -176,65 +174,48 @@ def generate_true_pdf(vendor, addr, phone, web, client, c_addr, inv_num, date, t
     
     return pdf.output()
 
-# --- DUAL ACTION VIEWER ENGINE ---
+# --- RENDERING CONTROL PANEL ---
 if final_items:
-    st.markdown("### 🖨️ Step 3: Preview & Download Live Document")
+    st.markdown("---")
+    st.markdown("### 🖨️ Step 3: View & Download Your PDF Invoice")
     
-    # 1. Compile backend PDF data channel bytes
+    # 1. Compile backend PDF data channel bytes safely
     pdf_bytes = generate_true_pdf(
         vendor_name, vendor_addr, vendor_phone, vendor_web,
         client_name, client_addr, inv_number, inv_date, 
         tax_rate, final_items, PRIMARY_RGB, CURRENCY_SYM
     )
     
-    # 2. Render direct download layout trigger
+    # 2. Native download logic that completely bypasses all sandbox blockades
     st.download_button(
-        label="📥 Click here to download this file as a real PDF",
+        label="📥 Click Here to Download True PDF File",
         data=bytes(pdf_bytes),
         file_name=f"invoice_{inv_number}.pdf",
         mime="application/pdf",
         use_container_width=True
     )
     
-    # 3. Create desktop layout split views
-    col_v1, col_v2 = st.columns([1, 1])
+    # 3. Clean Native UI View Grid Component (Bypasses Chrome blockages entirely)
+    col_v1, col_v2 = st.columns([3, 2])
     
     with col_v1:
-        st.markdown("#### 👁️ Screen Visual Preview")
-        # Generates a dynamic clean layout template inside the dashboard wrapper
-        table_rows_html = "".join([
-            f"<tr><td style='padding:10px; border-bottom:1px solid #eee;'>{r['Description']}</td>"
-            f"<td style='text-align:center;'>{r['Quantity']}</td>"
-            f"<td style='text-align:right;'>{CURRENCY_SYM}{r['Unit Price']:,.2f}</td>"
-            f"<td style='text-align:right; font-weight:bold;'>{CURRENCY_SYM}{r['Total']:,.2f}</td></tr>"
-            for r in final_items
-        ])
+        st.markdown("#### 📝 Live Sheet Calculations Preview")
+        df_display_table = pd.DataFrame(final_items)[["Description", "Quantity", "Unit Price", "Total"]]
+        st.dataframe(df_display_table, use_container_width=True, hide_index=True)
+        
+    with col_v2:
+        st.markdown("#### 💰 Invoice Summary")
         subtotal = sum([r['Total'] for r in final_items])
         tax_amount = subtotal * (tax_rate / 100)
         grand_total = subtotal + tax_amount
         
-        html_preview = f"""
-        <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 6px; background: white; color: #333;">
-            <h3 style="color:{PRIMARY_HEX}; margin-top:0;">{vendor_name}</h3>
-            <p style="font-size:12px; color:#666; margin-bottom:20px;">Invoice #: <b>{inv_number}</b> | Date: {inv_date}</p>
-            <div style="background:#f9f9f9; padding:10px; font-size:13px; margin-bottom:20px;"><b>Billed To:</b> {client_name}</div>
-            <table style="width:100%; font-size:13px; border-collapse:collapse;">
-                <tr style="background:{PRIMARY_HEX}; color:white;"><th style="padding:8px; text-align:left;">Item</th><th style="text-align:center;">Qty</th><th style="text-align:right;">Price</th><th style="text-align:right;">Total</th></tr>
-                {table_rows_html}
-            </table>
-            <div style="text-align:right; margin-top:15px; font-size:14px;">
-                <p>Subtotal: {CURRENCY_SYM}{subtotal:,.2f}</p>
-                <p style="font-size:16px; font-weight:bold; color:{PRIMARY_HEX};">Total Due: {CURRENCY_SYM}{grand_total:,.2f}</p>
-            </div>
-        </div>
-        """
-        st.components.v1.html(html_preview, height=450, scrolling=True)
-
-    with col_v2:
-        st.markdown("#### 📄 Embedded Raw PDF Preview Pane")
-        # Encodes the backend PDF byte block directly into standard data iframe layers
-        base64_pdf = base64.b64encode(pdf_bytes).decode('utf-8')
-        pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="450px" type="application/pdf"></iframe>'
-        st.markdown(pdf_display, unsafe_allow_html=True)
+        st.info(f"""
+        * **Invoice No:** {inv_number}
+        * **Date Issued:** {inv_date}
+        * **Company:** {vendor_name}
+        * **Client Profile:** {client_name}
+        
+        ### **Grand Total:** {CURRENCY_SYM}{grand_total:,.2f}
+        """)
 else:
-    st.info("Please upload your structural `items.csv` file into the box above to generate your desktop preview panels.")
+    st.info("Please upload your structural `items.csv` file into the box above to generate your invoice template.")
