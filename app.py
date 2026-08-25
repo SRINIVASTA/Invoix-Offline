@@ -20,7 +20,6 @@ with col_opt1:
     }
     PRIMARY_RGB = theme_colors[theme_choice]
     
-    # Hex codes used strictly to style the live HTML screen visualizer
     PRIMARY_HEX = {
         "Corporate Navy": "#1E3A8A",
         "Emerald Modern": "#065F46",
@@ -28,7 +27,8 @@ with col_opt1:
     }[theme_choice]
 
 with col_opt2:
-    currency_choice = st.selectbox("💰 Select Currency Symbol:", ["$", "₹", "€", "£", "¥"])
+    # Updated 'Rs.' to '₹' for clean processing
+    currency_choice = st.selectbox("💰 Select Currency Symbol:", ["₹", "$", "€", "£", "¥"])
     CURRENCY_SYM = currency_choice
 
 # --- FILE UPLOADER ---
@@ -100,6 +100,12 @@ def generate_true_pdf(vendor, addr, phone, web, client, c_addr, inv_num, date, t
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
     
+    # Enable standard core font encoding for standard math symbols
+    pdf.configure_core_fonts_encoding("windows-1252")
+    
+    # Fallback to standard text string if symbol is non-standard font asset
+    pdf_currency = "Rs." if currency == "₹" else currency
+    
     # Header styling
     pdf.set_text_color(rgb_color, rgb_color, rgb_color)
     pdf.set_font("Helvetica", style="B", size=24)
@@ -153,8 +159,8 @@ def generate_true_pdf(vendor, addr, phone, web, client, c_addr, inv_num, date, t
         subtotal += row['Total']
         pdf.cell(100, 9, txt=f" {row['Description']}", border="B", ln=0)
         pdf.cell(20, 9, txt=str(row['Quantity']), border="B", ln=0, align="C")
-        pdf.cell(35, 9, txt=f"{currency} {row['Unit Price']:,.2f}", border="B", ln=0, align="R")
-        pdf.cell(35, 9, txt=f"{currency} {row['Total']:,.2f} ", border="B", ln=1, align="R")
+        pdf.cell(35, 9, txt=f"{pdf_currency} {row['Unit Price']:,.2f}", border="B", ln=0, align="R")
+        pdf.cell(35, 9, txt=f"{pdf_currency} {row['Total']:,.2f} ", border="B", ln=1, align="R")
         
     # Financial Calculations block
     tax_amount = subtotal * (tax / 100)
@@ -163,17 +169,17 @@ def generate_true_pdf(vendor, addr, phone, web, client, c_addr, inv_num, date, t
     pdf.ln(5)
     pdf.cell(120, 6, txt="", ln=0)
     pdf.cell(35, 6, txt="Subtotal:", ln=0)
-    pdf.cell(35, 6, txt=f"{currency} {subtotal:,.2f} ", ln=1, align="R")
+    pdf.cell(35, 6, txt=f"{pdf_currency} {subtotal:,.2f} ", ln=1, align="R")
     
     pdf.cell(120, 6, txt="", ln=0)
     pdf.cell(35, 6, txt=f"Tax ({tax}%):", ln=0)
-    pdf.cell(35, 6, txt=f"{currency} {tax_amount:,.2f} ", ln=1, align="R")
+    pdf.cell(35, 6, txt=f"{pdf_currency} {tax_amount:,.2f} ", ln=1, align="R")
     
     pdf.set_font("Helvetica", style="B", size=12)
     pdf.set_text_color(rgb_color, rgb_color, rgb_color)
     pdf.cell(120, 10, txt="", ln=0)
     pdf.cell(35, 10, txt="Total Due:", border="T", ln=0)
-    pdf.cell(35, 10, txt=f"{currency} {grand_total:,.2f} ", border="T", ln=1, align="R")
+    pdf.cell(35, 10, txt=f"{pdf_currency} {grand_total:,.2f} ", border="T", ln=1, align="R")
     
     return pdf.output()
 
@@ -182,14 +188,14 @@ if final_items:
     st.markdown("---")
     st.markdown("### 🖨️ Step 3: Live HTML Preview & True PDF Download")
     
-    # 1. Compile real PDF binary streaming bytes behind the scenes
+    # 1. Compile PDF behind the scenes
     pdf_bytes = generate_true_pdf(
         vendor_name, vendor_addr, vendor_phone, vendor_web,
         client_name, client_addr, inv_number, inv_date, 
         tax_rate, final_items, PRIMARY_RGB, CURRENCY_SYM
     )
     
-    # 2. Native Unblocked Download Button (Delivers real PDF immediately)
+    # 2. Native Unblocked Download Button
     st.download_button(
         label="📥 Click to Download True PDF Document File",
         data=bytes(pdf_bytes),
@@ -198,7 +204,7 @@ if final_items:
         use_container_width=True
     )
     
-    # 3. Build HTML Presentation string layout for safe desktop screen views
+    # 3. Build HTML Presentation string layout for screen preview
     table_rows_html = ""
     subtotal = 0.0
     for item in final_items:
@@ -274,7 +280,7 @@ if final_items:
     </div>
     """
     
-    # 4. Safely pipe the compiled HTML mock display into your Streamlit canvas
+    # 4. safely render the html preview box
     st.components.v1.html(html_invoice, height=600, scrolling=True)
 else:
     st.info("Please upload your structural `items.csv` file into the box above to generate your live view template panels.")
