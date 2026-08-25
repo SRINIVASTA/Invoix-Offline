@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from fpdf import FPDF
-import io
+import base64
 
 st.set_page_config(page_title="Master CSV Invoice Processor", layout="wide")
 st.title("🖨️ Master CSV to PDF Invoice Generator")
@@ -13,13 +13,18 @@ col_opt1, col_opt2 = st.columns(2)
 
 with col_opt1:
     theme_choice = st.selectbox("🎨 Choose Invoice Theme Color:", ["Corporate Navy", "Emerald Modern", "Charcoal Minimalist"])
-    # Map visual choices to strict RGB matrices for FPDF styling
     theme_colors = {
         "Corporate Navy": (30, 58, 138),
         "Emerald Modern": (6, 95, 70),
         "Charcoal Minimalist": (55, 65, 81)
     }
     PRIMARY_RGB = theme_colors[theme_choice]
+    # Hex version for HTML embedding previews
+    PRIMARY_HEX = {
+        "Corporate Navy": "#1E3A8A",
+        "Emerald Modern": "#065F46",
+        "Charcoal Minimalist": "#374151"
+    }[theme_choice]
 
 with col_opt2:
     currency_choice = st.selectbox("💰 Select Currency Symbol:", ["$", "Rs.", "€", "£", "¥"])
@@ -107,11 +112,8 @@ def generate_true_pdf(vendor, addr, phone, web, client, c_addr, inv_num, date, t
     # Vendor & Meta block info
     pdf.set_text_color(60, 60, 60)
     pdf.set_font("Helvetica", size=10)
-    
-    # Left Block: Company Details | Right Block: Invoice Meta
     pdf.cell(100, 5, txt=f"Address: {addr[:50]}", ln=0)
     pdf.cell(90, 5, txt=f"Invoice No: {inv_num}", ln=1, align="R")
-    
     pdf.cell(100, 5, txt=f"Phone: {phone} | Web: {web}", ln=0)
     pdf.cell(90, 5, txt=f"Date: {date}", ln=1, align="R")
     pdf.ln(10)
@@ -119,7 +121,7 @@ def generate_true_pdf(vendor, addr, phone, web, client, c_addr, inv_num, date, t
     # Client Billing Box
     pdf.set_fill_color(245, 247, 250)
     pdf.cell(190, 22, txt="", border=1, ln=0, fill=True)
-    pdf.set_x(15) # Offset inward for text spacing
+    pdf.set_x(15) 
     pdf.ln(2)
     pdf.set_font("Helvetica", style="B", size=9)
     pdf.set_text_color(100, 100, 100)
@@ -132,7 +134,7 @@ def generate_true_pdf(vendor, addr, phone, web, client, c_addr, inv_num, date, t
     pdf.cell(190, 5, txt=c_addr[:90], ln=1)
     pdf.ln(8)
     
-    # Table Grid Header Array
+    # Table Header
     pdf.set_fill_color(rgb_color[0], rgb_color[1], rgb_color[2])
     pdf.set_text_color(255, 255, 255)
     pdf.set_font("Helvetica", style="B", size=10)
@@ -141,7 +143,7 @@ def generate_true_pdf(vendor, addr, phone, web, client, c_addr, inv_num, date, t
     pdf.cell(35, 10, txt="Unit Price", border=0, ln=0, align="R", fill=True)
     pdf.cell(35, 10, txt="Total ", border=0, ln=1, align="R", fill=True)
     
-    # Table Grid Rows
+    # Table Rows
     pdf.set_text_color(31, 41, 55)
     pdf.set_font("Helvetica", size=10)
     subtotal = 0.0
@@ -153,12 +155,11 @@ def generate_true_pdf(vendor, addr, phone, web, client, c_addr, inv_num, date, t
         pdf.cell(35, 9, txt=f"{currency} {row['Unit Price']:,.2f}", border="B", ln=0, align="R")
         pdf.cell(35, 9, txt=f"{currency} {row['Total']:,.2f} ", border="B", ln=1, align="R")
         
-    # Bottom Financial Calculations Row
+    # Financial Row block
     tax_amount = subtotal * (tax / 100)
     grand_total = subtotal + tax_amount
     
     pdf.ln(5)
-    pdf.set_font("Helvetica", size=10)
     pdf.cell(120, 6, txt="", ln=0)
     pdf.cell(35, 6, txt="Subtotal:", ln=0)
     pdf.cell(35, 6, txt=f"{currency} {subtotal:,.2f} ", ln=1, align="R")
@@ -173,28 +174,67 @@ def generate_true_pdf(vendor, addr, phone, web, client, c_addr, inv_num, date, t
     pdf.cell(35, 10, txt="Total Due:", border="T", ln=0)
     pdf.cell(35, 10, txt=f"{currency} {grand_total:,.2f} ", border="T", ln=1, align="R")
     
-    # Output file to binary stream channel
     return pdf.output()
 
-# Render Execution Layout View and true direct download mechanism
+# --- DUAL ACTION VIEWER ENGINE ---
 if final_items:
-    st.markdown("### 🖨️ Step 3: Download Clean Native PDF Document")
+    st.markdown("### 🖨️ Step 3: Preview & Download Live Document")
     
-    # Execute the backend FPDF compilation logic script
-    pdf_data = generate_true_pdf(
+    # 1. Compile backend PDF data channel bytes
+    pdf_bytes = generate_true_pdf(
         vendor_name, vendor_addr, vendor_phone, vendor_web,
         client_name, client_addr, inv_number, inv_date, 
         tax_rate, final_items, PRIMARY_RGB, CURRENCY_SYM
     )
     
-    # Standard Native Download Button targeting pure binary application data streaming
+    # 2. Render direct download layout trigger
     st.download_button(
-        label="📥 Click to Download Instant PDF File",
-        data=bytes(pdf_data),
+        label="📥 Click here to download this file as a real PDF",
+        data=bytes(pdf_bytes),
         file_name=f"invoice_{inv_number}.pdf",
         mime="application/pdf",
         use_container_width=True
     )
-    st.success("Your direct PDF file download channel is initialized and verified!")
+    
+    # 3. Create desktop layout split views
+    col_v1, col_v2 = st.columns([1, 1])
+    
+    with col_v1:
+        st.markdown("#### 👁️ Screen Visual Preview")
+        # Generates a dynamic clean layout template inside the dashboard wrapper
+        table_rows_html = "".join([
+            f"<tr><td style='padding:10px; border-bottom:1px solid #eee;'>{r['Description']}</td>"
+            f"<td style='text-align:center;'>{r['Quantity']}</td>"
+            f"<td style='text-align:right;'>{CURRENCY_SYM}{r['Unit Price']:,.2f}</td>"
+            f"<td style='text-align:right; font-weight:bold;'>{CURRENCY_SYM}{r['Total']:,.2f}</td></tr>"
+            for r in final_items
+        ])
+        subtotal = sum([r['Total'] for r in final_items])
+        tax_amount = subtotal * (tax_rate / 100)
+        grand_total = subtotal + tax_amount
+        
+        html_preview = f"""
+        <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 6px; background: white; color: #333;">
+            <h3 style="color:{PRIMARY_HEX}; margin-top:0;">{vendor_name}</h3>
+            <p style="font-size:12px; color:#666; margin-bottom:20px;">Invoice #: <b>{inv_number}</b> | Date: {inv_date}</p>
+            <div style="background:#f9f9f9; padding:10px; font-size:13px; margin-bottom:20px;"><b>Billed To:</b> {client_name}</div>
+            <table style="width:100%; font-size:13px; border-collapse:collapse;">
+                <tr style="background:{PRIMARY_HEX}; color:white;"><th style="padding:8px; text-align:left;">Item</th><th style="text-align:center;">Qty</th><th style="text-align:right;">Price</th><th style="text-align:right;">Total</th></tr>
+                {table_rows_html}
+            </table>
+            <div style="text-align:right; margin-top:15px; font-size:14px;">
+                <p>Subtotal: {CURRENCY_SYM}{subtotal:,.2f}</p>
+                <p style="font-size:16px; font-weight:bold; color:{PRIMARY_HEX};">Total Due: {CURRENCY_SYM}{grand_total:,.2f}</p>
+            </div>
+        </div>
+        """
+        st.components.v1.html(html_preview, height=450, scrolling=True)
+
+    with col_v2:
+        st.markdown("#### 📄 Embedded Raw PDF Preview Pane")
+        # Encodes the backend PDF byte block directly into standard data iframe layers
+        base64_pdf = base64.b64encode(pdf_bytes).decode('utf-8')
+        pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="450px" type="application/pdf"></iframe>'
+        st.markdown(pdf_display, unsafe_allow_html=True)
 else:
-    st.info("Please upload your structural `items.csv` file into the box above to generate your true PDF download link.")
+    st.info("Please upload your structural `items.csv` file into the box above to generate your desktop preview panels.")
