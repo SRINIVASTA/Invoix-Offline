@@ -7,35 +7,32 @@ import base64
 st.set_page_config(page_title="Master CSV Invoice Processor", layout="wide")
 st.title("🖨️ Master CSV to PDF Invoice Generator")
 
-# --- USER OPTIONS SECTION ---
-st.markdown("### 🛠️ Step 1: Customize Invoice Style & Currency")
-col_opt1, col_opt2 = st.columns(2)
+# --- STEP 1 & 2: SIDEBAR CONTROL PANEL LAYOUT ---
+st.sidebar.header("⚙️ Invoix Control Panel")
 
-with col_opt1:
-    theme_choice = st.selectbox("🎨 Choose Invoice Theme Color:", ["Corporate Navy", "Emerald Modern", "Charcoal Minimalist"])
-    theme_colors = {
-        "Corporate Navy": (30, 58, 138),
-        "Emerald Modern": (6, 95, 70),
-        "Charcoal Minimalist": (55, 65, 81)
-    }
-    PRIMARY_RGB = theme_colors[theme_choice]
-    
-    PRIMARY_HEX = {
-        "Corporate Navy": "#1E3A8A",
-        "Emerald Modern": "#065F46",
-        "Charcoal Minimalist": "#374151"
-    }[theme_choice]
+st.sidebar.markdown("### 🛠️ Step 1: Customize Style & Currency")
+theme_choice = st.sidebar.selectbox("🎨 Choose Invoice Theme Color:", ["Corporate Navy", "Emerald Modern", "Charcoal Minimalist"])
+theme_colors = {
+    "Corporate Navy": (30, 58, 138),
+    "Emerald Modern": (6, 95, 70),
+    "Charcoal Minimalist": (55, 65, 81)
+}
+PRIMARY_RGB = theme_colors[theme_choice]
 
-with col_opt2:
-    currency_choice = st.selectbox("💰 Select Currency Symbol:", ["₹", "$", "€", "£", "¥"])
-    CURRENCY_SYM = currency_choice
+PRIMARY_HEX = {
+    "Corporate Navy": "#1E3A8A",
+    "Emerald Modern": "#065F46",
+    "Charcoal Minimalist": "#374151"
+}[theme_choice]
 
-# --- FILE UPLOADER ---
-st.markdown("---")
-st.markdown("### 📥 Step 2: Upload Your Master Invoice CSV")
-uploaded_file = st.file_uploader("Upload your comprehensive items.csv", type=["csv"])
+currency_choice = st.sidebar.selectbox("💰 Select Currency Symbol:", ["₹", "$", "€", "£", "¥"])
+CURRENCY_SYM = currency_choice
 
-# Default fallback values if no file is uploaded
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 📥 Step 2: Upload Source Data")
+uploaded_file = st.sidebar.file_uploader("Upload your comprehensive items.csv", type=["csv"])
+
+# Default fallback values if no file is uploaded yet
 vendor_name, vendor_addr, vendor_phone, vendor_web = "My Business Ltd", "Address", "N/A", "N/A"
 client_name, client_addr = "Client Name", "Client Address"
 inv_number, tax_rate = "INV-000", 0.0
@@ -90,9 +87,9 @@ if uploaded_file is not None:
             df_items["Total"] = df_items["Quantity"] * df_items["Unit Price"]
             final_items = df_items.to_dict(orient="records")
             
-            st.success(f"Successfully loaded invoice structure with {len(final_items)} itemized rows!")
+            st.sidebar.success(f"Loaded {len(final_items)} item rows successfully!")
     except Exception as e:
-        st.error(f"Error reading file layout: {e}. Please double check your formatting.")
+        st.sidebar.error(f"Error reading layout: {e}")
 # Function to generate a real PDF binary in-memory using FPDF2
 def generate_true_pdf(vendor, addr, phone, web, client, c_addr, inv_num, date, tax, items, rgb_color, currency):
     pdf = FPDF(orientation="P", unit="mm", format="A4")
@@ -103,7 +100,7 @@ def generate_true_pdf(vendor, addr, phone, web, client, c_addr, inv_num, date, t
     pdf_currency = "Rs." if currency == "₹" else currency
     
     # Header styling
-    pdf.set_text_color(rgb_color[0], rgb_color[1], rgb_color[2])
+    pdf.set_text_color(rgb_color, rgb_color, rgb_color)
     pdf.set_font("Helvetica", style="B", size=24)
     pdf.cell(100, 10, txt=vendor, ln=0, align="L")
     
@@ -138,7 +135,7 @@ def generate_true_pdf(vendor, addr, phone, web, client, c_addr, inv_num, date, t
     pdf.ln(8)
     
     # Table Header
-    pdf.set_fill_color(rgb_color[0], rgb_color[1], rgb_color[2])
+    pdf.set_fill_color(rgb_color, rgb_color, rgb_color)
     pdf.set_text_color(255, 255, 255)
     pdf.set_font("Helvetica", style="B", size=10)
     pdf.cell(100, 10, txt=" Line Item Description", border=0, ln=0, fill=True)
@@ -172,35 +169,36 @@ def generate_true_pdf(vendor, addr, phone, web, client, c_addr, inv_num, date, t
     pdf.cell(35, 6, txt=f"{pdf_currency} {tax_amount:,.2f} ", ln=1, align="R")
     
     pdf.set_font("Helvetica", style="B", size=12)
-    pdf.set_text_color(rgb_color[0], rgb_color[1], rgb_color[2])
+    pdf.set_text_color(rgb_color, rgb_color, rgb_color)
     pdf.cell(120, 10, txt="", ln=0)
     pdf.cell(35, 10, txt="Total Due:", border="T", ln=0)
     pdf.cell(35, 10, txt=f"{pdf_currency} {grand_total:,.2f} ", border="T", ln=1, align="R")
     
     return pdf.output()
 
-# --- THE DUAL PIPELINE RENDERER ---
+# --- MAIN PAGE DISPLAY PIPELINE ---
 if final_items:
-    st.markdown("---")
-    st.markdown("### 🖨️ Step 3: Live HTML Preview & True PDF Download")
-    
-    # 1. Compile PDF behind the scenes safely
+    # Compile PDF byte matrix behind the scenes
     pdf_bytes = generate_true_pdf(
         vendor_name, vendor_addr, vendor_phone, vendor_web,
         client_name, client_addr, inv_number, inv_date, 
         tax_rate, final_items, PRIMARY_RGB, CURRENCY_SYM
     )
     
-    # 2. Native Unblocked Download Button
-    st.download_button(
-        label="📥 Click to Download True PDF Document File",
+    # Placing Step 3 inside the Sidebar menu as requested!
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 🖨️ Step 3: Download Document")
+    st.sidebar.download_button(
+        label="📥 Click to Download True PDF",
         data=bytes(pdf_bytes),
         file_name=f"invoice_{inv_number}.pdf",
         mime="application/pdf",
         use_container_width=True
     )
     
-    # 3. Build HTML Presentation string layout for screen preview
+    st.markdown("### 👁️ Live Invoice Document Preview")
+    
+    # Build beautiful presentation HTML mock layout
     table_rows_html = ""
     subtotal = 0.0
     for item in final_items:
@@ -276,7 +274,6 @@ if final_items:
     </div>
     """
     
-    # 4. safely render the html preview box
-    st.components.v1.html(html_invoice, height=600, scrolling=True)
+    st.components.v1.html(html_invoice, height=650, scrolling=True)
 else:
-    st.info("Please upload your structural `items.csv` file into the box above to generate your live view template panels.")
+    st.info("💡 **Welcome!** Please look over at the left panel sidebar. Upload your template `items.csv` file there to render your real-time visual invoice dashboard layout here.")
