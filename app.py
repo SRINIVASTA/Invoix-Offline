@@ -85,3 +85,116 @@ if uploaded_file is not None:
             st.success(f"Successfully loaded invoice structure with {len(final_items)} itemized rows!")
     except Exception as e:
         st.error(f"Error reading file layout: {e}. Please double check your formatting.")
+# Build HTML Print Layout and Financial calculations
+if final_items:
+    df_totals = pd.DataFrame(final_items)
+    subtotal = df_totals["Total"].sum()
+    tax_amount = subtotal * (tax_rate / 100)
+    grand_total = subtotal + tax_amount
+
+    st.markdown("### 🖨️ Step 3: Print Layout Visualizer")
+    
+    table_rows_html = ""
+    for item in final_items:
+        table_rows_html += f"""
+        <tr>
+            <td style='padding: 12px; border-bottom: 1px solid #E5E7EB; text-align: left;'>{item['Description']}</td>
+            <td style='padding: 12px; border-bottom: 1px solid #E5E7EB; text-align: center;'>{item['Quantity']}</td>
+            <td style='padding: 12px; border-bottom: 1px solid #E5E7EB; text-align: right;'>{CURRENCY_SYM}{item['Unit Price']:,.2f}</td>
+            <td style='padding: 12px; border-bottom: 1px solid #E5E7EB; text-align: right; font-weight: bold;'>{CURRENCY_SYM}{item['Total']:,.2f}</td>
+        </tr>
+        """
+
+    # Combined HTML Layout with embedded automated html2pdf engine
+    html_invoice = f"""
+    <html>
+    <head>
+        <script src="https://cloudflare.com"></script>
+        <script>
+            function generatePDF() {{
+                const element = document.getElementById('invoice-card');
+                const opt = {{
+                    margin:       0.4,
+                    filename:     'invoice_{inv_number}.pdf',
+                    image:        {{ type: 'jpeg', quality: 0.98 }},
+                    html2canvas:  {{ scale: 2, useCORS: true }},
+                    jsPDF:        {{ unit: 'in', format: 'letter', orientation: 'portrait' }}
+                }};
+                html2pdf().set(opt).from(element).save();
+            }}
+        </script>
+    </head>
+    <body style="margin:0; padding:10px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color:#f4f4f4;">
+        
+        <!-- Interactive PDF Trigger Button -->
+        <div style="max-width: 850px; margin: 0 auto 15px auto;">
+            <button onclick="generatePDF()" style="width:100%; background-color:{PRIMARY_COLOR}; color:white; padding:15px; border:none; border-radius:6px; font-weight:bold; font-size:16px; cursor:pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                📥 Click to Download Instant PDF File
+            </button>
+        </div>
+
+        <!-- The Target Printable Layout Card Container -->
+        <div id="invoice-card" style="padding: 40px; border: 1px solid #E5E7EB; border-radius: 8px; max-width: 850px; margin: auto; background-color: #fff; color: #1F2937; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+                <tr>
+                    <td style="vertical-align: top; text-align: left;">
+                        <span style="font-size: 24px; font-weight: 800; color: {PRIMARY_COLOR}; letter-spacing: -0.5px;">{vendor_name}</span><br>
+                        <span style="font-size: 13px; color: #4B5563; line-height: 1.5;">
+                            {vendor_addr}<br>
+                            📱 Phone: {vendor_phone} | 🌐 Web: {vendor_web}
+                        </span>
+                    </td>
+                    <td style="vertical-align: top; text-align: right;">
+                        <span style="font-size: 30px; font-weight: 300; color: #9CA3AF; letter-spacing: 1px;">INVOICE</span><br>
+                        <span style="font-size: 14px; color: #1F2937; line-height: 1.6;">
+                            <b>Invoice No:</b> <span style="color: {PRIMARY_COLOR}; font-weight: 600;">{inv_number}</span><br>
+                            <b>Date:</b> {inv_date}
+                        </span>
+                    </td>
+                </tr>
+            </table>
+            
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 40px; background-color: #F9FAFB;">
+                <tr>
+                    <td style="padding: 15px; border: 1px solid #F3F4F6; vertical-align: top;">
+                        <span style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #6B7280;">Billed To:</span><br>
+                        <span style="font-size: 15px; font-weight: 700; color: #111827; display:block; margin-top:4px; margin-bottom:4px;">{client_name}</span>
+                        <span style="font-size: 13px; color: #4B5563; line-height: 1.4;">{client_addr}</span>
+                    </td>
+                </tr>
+            </table>
+            
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+                <thead>
+                    <tr style="background-color: {PRIMARY_COLOR}; color: white;">
+                        <th style="padding: 12px; text-align: left; font-size: 13px;">Line Item Description</th>
+                        <th style="padding: 12px; text-align: center; font-size: 13px;">Qty</th>
+                        <th style="padding: 12px; text-align: right; font-size: 13px;">Unit Price</th>
+                        <th style="padding: 12px; text-align: right; font-size: 13px;">Total</th>
+                    </tr>
+                </thead>
+                <tbody>{table_rows_html}</tbody>
+            </table>
+            
+            <table style="width: 45%; margin-left: 55%; border-collapse: collapse; font-size: 14px;">
+                <tr>
+                    <td style="padding: 8px 0; color: #4B5563;">Subtotal:</td>
+                    <td style="padding: 8px 0; text-align: right;">{CURRENCY_SYM}{subtotal:,.2f}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px 0; color: #4B5563;">Tax ({tax_rate}%):</td>
+                    <td style="padding: 8px 0; text-align: right;">{CURRENCY_SYM}{tax_amount:,.2f}</td>
+                </tr>
+                <tr style="border-top: 2px solid {PRIMARY_COLOR};">
+                    <td style="padding: 15px 0 0 0; font-size: 16px; font-weight: 700;">Amount Due:</td>
+                    <td style="padding: 15px 0 0 0; text-align: right; font-size: 20px; font-weight: 800; color: {PRIMARY_COLOR};">{CURRENCY_SYM}{grand_total:,.2f}</td>
+                </tr>
+            </table>
+        </div>
+    </body>
+    </html>
+    """
+
+    st.components.v1.html(html_invoice, height=650, scrolling=True)
+else:
+    st.info("Please upload your structural `items.csv` file into the box above to generate your invoice template.")
